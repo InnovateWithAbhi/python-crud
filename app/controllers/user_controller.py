@@ -42,18 +42,38 @@ def get_users(db: Session = Depends(get_db)):
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, db: Session = Depends(get_db)):
     """Retrieve a user by ID."""
-    user = user_usecase.get_user_by_id(db, user_id)
-    if not user:
+    try:
+        user = user_usecase.get_user_by_id(db, user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+        # Convert fields to string where necessary
+        user_dict = {
+            "id": user.id,
+            "userId": str(user.userId),
+            "firstName": user.firstName,
+            "lastName": user.lastName,
+            "email": user.email,
+            "mobileNumber": user.mobileNumber,
+            "createdOn": user.createdOn.isoformat(),
+            "updatedOn": user.updatedOn.isoformat(),
+            "isActive": user.isActive
+        }
+        return user_dict
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal Server Error: {str(e)}",
         )
-    return user
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_200_OK)
 def create_user(user: UserCreateRequest, db: Session = Depends(get_db)):
-    """Create a new user."""
-    created_user = user_usecase.create_user(db, user.dict())
-    return created_user
+    try:
+        created_user = user_usecase.create_user(db, user.model_dump())
+        return created_user
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, user: UserCreateRequest, db: Session = Depends(get_db)):

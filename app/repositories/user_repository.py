@@ -1,3 +1,4 @@
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.domain.models import User
 
@@ -11,11 +12,14 @@ class UserRepository:
         return db.query(User).filter(User.id == user_id).first()
 
     def create_user(self, db: Session, user: User):
-        """Create a new user."""
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
+        try:
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            return user
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise RuntimeError(f"Database error: {str(e)}")
 
     def update_user(self, db: Session, user_id: int, updates: dict):
         """Update an existing user."""
